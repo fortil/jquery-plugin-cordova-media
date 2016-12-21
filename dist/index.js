@@ -65,7 +65,7 @@
 /******/ 	}
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "4e6806526f07ce80f026"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "d17033304037251b4439"; // eslint-disable-line no-unused-vars
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentParents = []; // eslint-disable-line no-unused-vars
 /******/ 	
@@ -639,6 +639,8 @@
 	  console.log("Error getting pos=" + e);
 	}
 
+	function startState() {}
+
 	function _playPauseAudio(_ref2) {
 	  var _this = this;
 
@@ -653,6 +655,8 @@
 	  var playIcon = this.icons.playIcon;
 	  var pauseIcon = this.icons.pauseIcon;
 	  var changeIconView = this.changeIconView;
+	  var element = document.getElementsByClassName('range ex1-' + id)[0];
+	  var dur = 100;
 
 	  function _ref3() {
 	    changeIconView(id, pauseIcon);
@@ -672,44 +676,55 @@
 	    this.audios[id].play();
 	    this.audios[id].estado = 'play';
 	    changeIconView(id, pauseIcon);
+	    // element.value = 0;
 	  }
-	  var dur = Math.round(this.audios[id].getDuration() * 10) / 10;
-	  var element = document.getElementsByClassName('range ex1-' + id)[0];
-	  element.max = dur;
-	  element.value = 0;
+	  if (this.audios[id].estado == 'play') {
+	    this.audios[id].mediaTimer = setInterval(function () {
+	      dur = Math.round(_this.audios[id].getDuration() * 10) / 10 * 100;
+	      dur = dur <= 0 ? -1 * dur : dur;
+	      element.max = dur;
+	      console.log('duración: ', dur, _this.audios[id].getDuration());
 
-	  this.audios[id].mediaTimer = setInterval(function () {
+	      _this.audios[id].getCurrentPosition(function (position) {
+	        var pos = Math.round(position * 10) / 10 * 100;
+	        console.log('posicion: ' + pos, 'duración: ' + dur);
+	        if (pos <= 0) {
+	          pauseState({ audio: _this.audios[id], element: element, pos: pos });
+	        } else element.value = pos;
+	      }, _ref5);
 
-	    _this.audios[id].getCurrentPosition(function (position) {
-	      var pos = Math.round(position * 10) / 10;
-	      if (pos < 0) {
-	        clearInterval(_this.audios[id].mediaTimer);
-	        changeIconView(id, pauseIcon);
-	      } else element.value = pos;
-	    }, _ref5);
+	      if (dur == 0) {
+	        pauseState({ audio: _this.audios[id], element: element, pos: pos });
+	      }
+	    }, 500);
+	  }function pauseState(_ref6) {
+	    var audio = _ref6.audio,
+	        element = _ref6.element,
+	        pos = _ref6.pos;
 
-	    if (dur == 0) {
-	      clearInterval(_this.audios[id].mediaTimer);
-	    }
-	  }, 500);
+	    audio.estado = 'pause';
+	    clearInterval(audio.mediaTimer);
+	    element.value = pos;
+	    changeIconView(id, playIcon);
+	  }
 	}
 
-	function _ref8() {
+	function _ref9() {
 	  console.log("error deleting the file " + error.code);
 	}
 
-	function _removeAudio(_ref6) {
-	  var id = _ref6.id,
-	      fullPath = _ref6.fullPath,
-	      name = _ref6.name,
-	      selector = _ref6.selector,
-	      idRegistro = _ref6.idRegistro,
-	      idPregunta = _ref6.idPregunta,
-	      max = _ref6.max;
+	function _removeAudio(_ref7) {
+	  var id = _ref7.id,
+	      fullPath = _ref7.fullPath,
+	      name = _ref7.name,
+	      selector = _ref7.selector,
+	      idRegistro = _ref7.idRegistro,
+	      idPregunta = _ref7.idPregunta,
+	      max = _ref7.max;
 
 	  var self = this;
 
-	  function _ref7(file) {
+	  function _ref8(file) {
 	    delete self.songs[id];
 	    self.reloadValues.bind(self)();
 	    self.chargeValues.bind(self)();
@@ -718,38 +733,38 @@
 	    console.log("File removed!");
 	  }
 
-	  function _ref9(file) {
-	    file.remove(_ref7, _ref8);
+	  function _ref10(file) {
+	    file.remove(_ref8, _ref9);
 	  }
 
 	  window.resolveLocalFileSystemURL(self.cordovaDir, function (dir) {
-	    dir.getFile(name, { create: true }, _ref9);
+	    dir.getFile(name, { create: true }, _ref10);
 	  });
 	}
 
-	function _ref11(e) {
+	function _ref12(e) {
 	  return console.log(e);
 	}
 
-	function _recordAudio(_ref10) {
+	function _recordAudio(_ref11) {
 	  var _this2 = this;
 
-	  var selector = _ref10.selector,
-	      idRegistro = _ref10.idRegistro,
-	      idPregunta = _ref10.idPregunta,
-	      max = _ref10.max;
+	  var selector = _ref11.selector,
+	      idRegistro = _ref11.idRegistro,
+	      idPregunta = _ref11.idPregunta,
+	      max = _ref11.max;
 
 	  var store = this.cordovaDir; //externalApplicationStorageDirectory; // window.externalApplicationStorageDirectory || window.PERSISTENT || window.TEMPORARY;
 	  var filepart = Date.now();
 	  var name = filepart + '_' + idRegistro + '_' + idPregunta + '.amr';
 	  var fullPath = store + name;
 
-	  function _ref12() {
+	  function _ref13() {
 	    var addAudio = _this2.addAudio.bind(_this2);
 	    _this2.record.recording = true;
 	    _this2.record.media = new Media(fullPath, function (e) {
 	      return addAudio({ fullPath: fullPath, name: name, selector: selector, idRegistro: idRegistro, idPregunta: idPregunta, max: max });
-	    }, _ref11);
+	    }, _ref12);
 	    _this2.record.media.startRecord();
 	    _this2.startRecordView(selector);
 	  }
@@ -762,18 +777,18 @@
 	      this.record.recording = false;
 	      this.stopRecordView(selector);
 	    } else {
-	      _ref12();
+	      _ref13();
 	    }
 	  }
 	}
 
-	function _addAudio(_ref13) {
-	  var fullPath = _ref13.fullPath,
-	      name = _ref13.name,
-	      selector = _ref13.selector,
-	      idRegistro = _ref13.idRegistro,
-	      idPregunta = _ref13.idPregunta,
-	      max = _ref13.max;
+	function _addAudio(_ref14) {
+	  var fullPath = _ref14.fullPath,
+	      name = _ref14.name,
+	      selector = _ref14.selector,
+	      idRegistro = _ref14.idRegistro,
+	      idPregunta = _ref14.idPregunta,
+	      max = _ref14.max;
 
 	  var id = Date.now();
 	  this.songs[id] = { id: id, fullPath: fullPath, name: name, selector: selector, idRegistro: idRegistro, idPregunta: idPregunta, max: max };
@@ -912,20 +927,21 @@
 	// let app = new App({ url, idMensaje, idBtnRecord })
 
 
-	function _ref15(_ref14) {
-	  var idRegistro = _ref14.idRegistro,
-	      idPregunta = _ref14.idPregunta,
-	      max = _ref14.max;
+	function _ref16(_ref15) {
+	  var idRegistro = _ref15.idRegistro,
+	      idPregunta = _ref15.idPregunta,
+	      max = _ref15.max;
 
 	  var selector = this.selector;
 	  var app = new App({ idRegistro: idRegistro, idPregunta: idPregunta, max: max, selector: selector });
-	  var init = app.init.bind(app);
-	  document.addEventListener('deviceready', init, false);
+	  // let init = app.init.bind(app);
+	  app.init();
+	  // document.addEventListener('deviceready', init , false);
 	  return { element: this, app: app };
 	}
 
 	(function ($) {
-	  $.fn.recordMedia = _ref15;
+	  $.fn.recordMedia = _ref16;
 	})(jQuery);
 
 /***/ },
