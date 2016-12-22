@@ -350,10 +350,10 @@
         ft.onprogress = _ref14;
         ft.upload(data.path, uri, _ref15, _ref16, options);
     }
-    var App = function() {
-        function App(_ref) {
+    var RecordMedia = function() {
+        function RecordMedia(_ref) {
             var idRegistro = _ref.idRegistro, idPregunta = _ref.idPregunta, max = _ref.max, nameServer = _ref.nameServer, selector = _ref.selector;
-            (0, _classCallCheck3.default)(this, App);
+            (0, _classCallCheck3.default)(this, RecordMedia);
             this.arguments = {
                 selector: selector,
                 idRegistro: idRegistro || (0, _helpers.MakeId)(),
@@ -383,7 +383,7 @@
                 recording: false
             };
         }
-        (0, _createClass3.default)(App, [ {
+        (0, _createClass3.default)(RecordMedia, [ {
             key: "getIcon",
             value: _getIcon
         }, {
@@ -423,7 +423,7 @@
             key: "upload",
             value: _upload
         } ]);
-        return App;
+        return RecordMedia;
     }();
     function _ref18(_ref17) {
         var idRegistro = _ref17.idRegistro, idPregunta = _ref17.idPregunta, nameServer = _ref17.nameServer, max = _ref17.max;
@@ -447,7 +447,8 @@
     if (jQuery) {
         _ref19(jQuery);
     }
-    exports.default = App;
+    window.RecordMedia = RecordMedia;
+    exports.default = RecordMedia;
 }, function(module, exports, __webpack_require__) {
     "use strict";
     exports.__esModule = true;

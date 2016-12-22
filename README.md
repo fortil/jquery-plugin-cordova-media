@@ -1,7 +1,7 @@
 jQuery plugin - media cordova
 ===================
 
-Wonderfull plugin to record and play media using cordova and jQuery. This plugin generate a complete view to use it in a **mobile app**. It's easy to use,  you only have to follow the recommendations. This plugin use WebSQL to save the created files.
+Wonderfull plugin to record and play media using cordova and jQuery (now jQuery isn't necesary). This plugin generate a complete view to use it in a **mobile app**. It's easy to use,  you only have to follow the recommendations. This plugin use WebSQL to save the created files.
 Requirements
 -------
 
@@ -26,7 +26,7 @@ How to use
 :
   <script src="./js/libs/jquery.min.js"></script>
   <script src="./cordova.js"></script>
-  <script src="./js/libs/jquery-cordova-plugin-record-media.js"></script>
+  <script src="./js/libs/record-media.js"></script>
   <script src="./js/custom_js.js"></script>
 </body>
 ```
@@ -35,12 +35,15 @@ You can add <kbd>data</kbd> attributes to element to custom the outs [view](#dat
 First, you call to cordova event <kbd>deviceready</kbd>.
 The Plugin receive 3 parameters, the two first are **IDs** for the records and the last is for the record limit.
 ```
+> With jQuery
+
 document.addEventListener('deviceready', function(){
 
   $('#recordSong').recordMedia({ 
     'idRegistro': '52154',
     'idPregunta': '441121', 
-    'max': 5 
+    'max': 5,
+    'nameServer': 'http://nameserver.com/upload.php'
   });
 
   $('#recordSong2').recordMedia({ 
@@ -48,6 +51,25 @@ document.addEventListener('deviceready', function(){
     'idPregunta': 'cual', 
     'max': 5 
   });
+
+}, false);
+
+> Without jQuery
+
+document.addEventListener('deviceready', function(){
+
+  let app = new RecordMedia({ 
+      idRegistro: '52154', 
+      idPregunta: '441121', 
+      max: 5, 
+      nameServer: 
+      'http://nameserver.com/upload.php', 
+      selector: '#recordSong' 
+    });
+  app.init()
+  // you cant only put
+  let app2 = new RecordMedia({ selector: '#recordSong' });
+  app2.init()
 
 }, false);
 ```

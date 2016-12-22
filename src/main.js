@@ -35,7 +35,7 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function() {
 }
 
 
-class App {
+class RecordMedia {
   constructor ({ idRegistro, idPregunta, max, nameServer, selector }){
     this.arguments = {
       selector,
@@ -374,6 +374,6 @@ if( jQuery ){
      }; 
   })( jQuery )
 }
+window.RecordMedia = RecordMedia;
 
-
-export default App;
+export default RecordMedia;
