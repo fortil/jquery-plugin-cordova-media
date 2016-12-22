@@ -1,3 +1,8 @@
+'use strict';
+
+import { SQLRecords, MakeId } from './helpers';
+
+
 Array.prototype.equals = function (array) {
   if (!array)
     return false;
@@ -29,115 +34,15 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function() {
     }
 }
 
-class SQLRecords{
-  /*
-  @params 
-  name: Nombre de la tabla
-  description: descripción de la tabla
-  size: tamaño de la tabla
-  table: un objeto con los siguientes items
-    name: nombre de la tabla
-    fields: los campos que tendrá la tabla
-  */
-  constructor({name, description, size, table, app}){
-    this.db = window.openDatabase(name,'1.0.0',description,size);
-    this.table = table;
-    this.fields = '';
-    this.app = app;
-    for (var i = 0; i < this.table.fields.length; i++) {
-      this.fields += (i==0 ? this.table.fields[i] : ', '+this.table.fields[i]);
-    }
-    this.db.transaction( tx => {
-      tx.executeSql(`CREATE TABLE IF NOT EXISTS ${this.table.name} (${this.fields})`);
-    })
-  }
-  insertValue( records ){
-    this.db.transaction( tx => {
-      let values = "";
-      for (var i = 0; i < records.length; i++) {
-        values += (i==0 ? "?" : ", ?");
-      }
-      tx.executeSql(`INSERT INTO ${this.table.name} (${this.fields}) VALUES (${values})`,records);
-    })
-  }
-  deleteValue( {field, value}, cb ){
-    this.db.transaction( tx => tx.executeSql(`DELETE FROM ${this.table.name} WHERE ${field} = ?`, [value], e => cb('ok'), e => cb('error')) );
-  }
-  getAllValues(cb){
-    let values = {};
-    this.db.transaction( tx => {
-      tx.executeSql(`SELECT * FROM ${this.table.name} WHERE idRegistro = ? AND idPregunta = ?`, 
-        [ this.app.idRegistro, this.app.idPregunta ], (tx, results) => {
-        if(results.rows.length == 0)
-          values = {}
-        else
-          values = results.rows;
-
-        if(cb)
-          cb(values)
-        else
-          return values
-      }, null);
-    })
-  }
-  getAllValuesAsId( cb ){
-    this.getAllValues( rows => {
-      let keys = Object.keys(rows);
-      let values = {};
-      if( keys.length > 0){
-        for (var i = 0; i < keys.length; i++) {
-          values[rows[keys[i]].id] = rows[keys[i]];
-        }
-      }
-      if(cb)
-        cb(values);
-      else
-        return values;
-    })
-  }
-  getValuesById( id, cb ){
-    this.getValues({ field: 'id', value: id}, cb);
-  }
-  getValues( {field, value}, cb ){
-    let val = {};
-    this.db.transaction( tx => {
-      tx.executeSql(`SELECT * FROM ${this.table.name} WHERE ${field} = ? AND idRegistro = ? AND idPregunta = ?`, 
-        [value, this.app.idRegistro, this.app.idPregunta], function (tx, results) {
-        if(results.rows.length == 0)
-          val = {};
-        else
-          val = results.rows;
-        if(cb)
-          cb(val);
-        else
-          return val;
-      }, null);
-    })
-  }
-  updateValue( {field, value, fieldWhere, valueWhere}, cb ){
-    let res = 'error';
-    this.db.transaction( tx => {
-      tx.executeSql(`UPDATE ${this.table.name} SET ${field} = ? WHERE ${fieldWhere} = ?`, [value, valueWhere], e => res = 'ok', e => res = 'error' );
-      if(cb)
-        cb(res);
-      else
-        return res;
-    })
-  }
-  updateValueById( {field, value, id } ){
-    this.updateValue( {field, value, fieldWhere: 'id', valueWhere: id}, res => {
-      return res
-    } )
-  }
-}
 
 class App {
-  constructor ({ idRegistro, idPregunta, max, selector }){
+  constructor ({ idRegistro, idPregunta, max, nameServer, selector }){
     this.arguments = {
       selector,
-      idRegistro,
-      idPregunta,
-      max
+      idRegistro: (idRegistro || MakeId() ),
+      idPregunta: (idPregunta || MakeId() ),
+      max: (max || 10000 ),
+      nameServer: (nameServer || undefined ),
     };
     this.audio = {};
     this.DB;
@@ -145,7 +50,7 @@ class App {
     // Default Icons
     this.icons = {
       playIcon: this.getIcon('play_arrow'),
-      stopIcon: this.getIcon('stop'),
+      stopIcon: this.getIcon('pause'),
       deleteIcon: this.getIcon('clear')
     };
     // Default strings
@@ -196,7 +101,12 @@ class App {
   }
 
   initView( ){
-    $('#content-'+this.arguments.idRegistro+'_'+this.arguments.idPregunta).empty();
+    // JS form
+    let medias = document.querySelector('#content-'+this.arguments.idRegistro+'_'+this.arguments.idPregunta);
+    if( medias != undefined )
+      medias.innerHTML = ''
+    // jQuery form
+    // $('#content-'+this.arguments.idRegistro+'_'+this.arguments.idPregunta).empty();
     this.DB.getAllValuesAsId( songs => {
       let addAudioView = this.addAudioView.bind(this);
       let arraySongs = Object.keys(songs);
@@ -212,7 +122,9 @@ class App {
 
 
   changeIconView(id, icon){
-    $('.play.'+id).html(icon);
+    document.getElementsByClassName('play '+id)[0].innerHTML = icon;
+    // jQuery Form
+    // $('.play.'+id).html(icon);
   }
 
   playPauseAudio( { id, path, name, selector, idRegistro, idPregunta, max } ){
@@ -223,7 +135,7 @@ class App {
     let dur = 100;
     let stopState = stopStateFunc.bind(this);
     let playState = playStateFunc.bind(this);
-    let mediaTimer = ()=>{}
+    let mediaTimer = ()=>{};
 
     if( this.audio && this.audio.id == id && this.audio.estado != 'pause'){
       stopState()
@@ -234,7 +146,15 @@ class App {
       this.audio.media = new Media( path,
         e => { console.log('Success ',e); changeIconView(id, stopIcon); },
         err => { changeIconView(id, playIcon); },
-        e => { console.log('Status ', e); if(e==4) stopState(); }
+        e => { 
+          console.log('Status ', e); 
+          if( e == 3 ){
+            stopState( this.audio.media._position * 100 ); 
+          }else if( e == 4 ) { 
+            this.DB.updateValueById( {field:'duration' , value: this.audio.media._duration, id } ); 
+            stopState( 0 ); 
+          }
+        }
       );
       playState();
     }
@@ -247,18 +167,20 @@ class App {
       changeIconView(id, stopIcon);
       // element.value = 0;
       mediaTimer = setInterval( () => {
-        dur = (Math.round( this.audio.media.getDuration() * 10 ) / 10) * 100 ;
+        dur = this.audio.media.getDuration() * 100 ;
         dur = dur <= 0 ? (-1*dur) : dur;
         element.max = dur;
 
         this.audio.media.getCurrentPosition(
           position => {
-            let pos = (Math.round( position * 10 ) / 10) * 100;
+            let pos = position * 100;
+
             if(pos <= 0 || this.audio.estado == 'pause' ){
-              stopState()
-              this.DB.updateValueById( {field:'duration' , value: dur/100, id } );
-            }else
+              stopState( 0 )
+            }else{
+              this.audio.pos = pos;
               element.value = pos;
+            }
           },
           e => {
             console.log("Error getting pos=" + e);
@@ -266,17 +188,16 @@ class App {
         );
         
         if (dur == 0 || this.audio.estado == 'pause' ){
-          stopState();//{audio: this.audio, element })
-          this.DB.updateValueById( {field:'duration' , value: dur/100, id } );
+          stopState( 0 );//{audio: this.audio, element })
         }
       }, 500)
     }
 
-    function stopStateFunc(){
+    function stopStateFunc( pos ){
       this.audio.estado = 'pause';
       this.audio.media.pause();
       clearInterval(mediaTimer);
-      element.value = 0;
+      element.value = (typeof pos == 'number' ? pos : this.audio.pos);
       changeIconView(id, playIcon);
     }
 
@@ -289,8 +210,11 @@ class App {
           file.remove( files =>{
             this.DB.deleteValue({field: 'id', value: id }, res => {
               if( res == 'ok'){
+                document.getElementsByClassName(`MediaRecord-media ${id}`)[0].remove();
+                // document.querySelector('#content-'+idRegistro+'_'+idPregunta).remove()
+                // jQuery Form
                 // $('#content-'+idRegistro+'_'+idPregunta).remove();
-                this.initView();
+                // this.initView();
                 console.log("File removed! ", files);
               }
             });
@@ -306,7 +230,7 @@ class App {
   recordAudio({ selector, idRegistro, idPregunta, max }){
     let store = this.cordovaDir; //externalApplicationStorageDirectory; // window.externalApplicationStorageDirectory || window.PERSISTENT || window.TEMPORARY;
     let id = Date.now();
-    let name =  id + '_' + idRegistro + '_' + idPregunta + '.amr';
+    let name =   idRegistro + '_' + idPregunta + '__' + id +'.amr';
     let path = store + name;
     this.DB.getAllValuesAsId( songs => {
       let lengthSongs = songs.length || ( typeof songs == 'object' ? Object.keys(songs).length : 0)
@@ -319,9 +243,15 @@ class App {
           this.stopRecordView.bind(this)( selector );
         }else{
           let addAudio = this.addAudio.bind(this);
+          let upload = this.upload.bind(this);
+
           this.record.recording = true;
           this.record.media = new Media( path , 
-            e => addAudio({ id, path, name, selector, idRegistro, idPregunta, max }) , 
+            e => { 
+              addAudio({ id, path, name, selector, idRegistro, idPregunta, max }); 
+              if( this.arguments.nameServer != undefined )
+                setTimeout( () => upload({ id, path, name, selector, idRegistro, idPregunta, max }),0); 
+            }, 
             e => console.log(e) );
           this.record.media.startRecord();
           this.startRecordView.bind(this)( selector );
@@ -334,72 +264,116 @@ class App {
 
   addAudio({ id, path, name, selector, idRegistro, idPregunta, max }){
     // ['id', 'name', 'path', 'idRegistro', 'idPregunta', 'type', 'duration', 'date']
-    this.DB.insertValue( [id, name, path, idRegistro, idPregunta, 'audio', '4.0', new Date().getTime()] ); 
-    this.addAudioView.bind(this)({ id, path, name, selector, idRegistro, idPregunta, max })
+    let date = new Date().getTime();
+    this.DB.insertValue( [id, name, path, idRegistro, idPregunta, 'audio', '4.0', date ] ); 
+    this.addAudioView.bind(this)({ id, path, name, selector, idRegistro, idPregunta, max, date })
   }
 
   startRecordView( selector ){
     document.querySelector( selector + '').innerHTML = this.strings.recording;
-    $('.mensaje.'+this.arguments.idRegistro+'.'+this.arguments.idPregunta).css('visibility','visible')
+    document.getElementsByClassName( 'mensaje '+this.arguments.idRegistro+' '+this.arguments.idPregunta)[0]
+      .style.visibility = 'visible';
+    // jQuery form
+    // $('.mensaje.'+this.arguments.idRegistro+'.'+this.arguments.idPregunta).css('visibility','visible')
   }
 
   stopRecordView( selector ){
     document.querySelector( selector + '').innerHTML = this.strings.stoprecord;
-    $('.mensaje.'+this.arguments.idRegistro+'.'+this.arguments.idPregunta).css('visibility','hidden');
+    document.getElementsByClassName( 'mensaje '+this.arguments.idRegistro+' '+this.arguments.idPregunta)[0]
+      .style.visibility = 'hidden';
+    // jQuery form
+    // $('.mensaje.'+this.arguments.idRegistro+'.'+this.arguments.idPregunta).css('visibility','hidden');
   }
 
   addAudioView( audio ){
 
-    // var playList = document.createElement('div');
-    //     playList.id = 'content-' + audio.id;
-    // var father = document.querySelector( audio.selector ).parentElement;
-
-    // var song = document.createElement('li');
-    //     song.id = audio.id;
-    //     song.innerHTML = this.templateAudio.bind(this)(audio);
-
     let playPauseAudio = this.playPauseAudio.bind(this);
     let removeAudio = this.removeAudio.bind(this);
-
-    // playList.insertBefore(song, playList.nextSibling);//.appendChild( song );
-    // father.insertBefore(playList, father.nextSibling); //.appendChild( playList );
-    // document.getElementsByClassName('play ' + audio.id)[0]
-    //   .addEventListener('click', () => playPauseAudio(audio), false);
-    
-    // document.getElementsByClassName('remove ' + audio.id)[0]
-    //   .addEventListener('click', () => removeAudio(audio), false);
-    
-    let reg = $('div#content-'+audio.idRegistro+'_'+audio.idPregunta);
     let template = this.templateAudio.bind(this)(audio);
-    if( reg.length <= 0){
-      $($(''+audio.selector).parent().get(0)).prepend('<div id="content-'+audio.idRegistro+'_'+audio.idPregunta+'"></div>')
+
+    // JS Form
+    let reg = document.querySelector( '#content-'+audio.idRegistro+'_'+audio.idPregunta);
+    if( reg == undefined ){
+      let btnAudio = document.querySelector( ''+audio.selector );
+      let father = btnAudio.parentElement;
+      let playList = document.createElement('div');
+          playList.id = "content-"+audio.idRegistro+"_"+audio.idPregunta;
+      father.insertBefore(playList, btnAudio);
     }
 
-    $('#content-'+audio.idRegistro+'_'+audio.idPregunta).prepend(template);
-    $('.play.' + audio.id).on('click', () => { playPauseAudio(audio) })
-    $('.remove.' + audio.id).on('click', () => { removeAudio(audio) })
+    document.querySelector( '#content-'+audio.idRegistro+'_'+audio.idPregunta)
+      .insertAdjacentHTML('beforeend', template)
+
+    document.getElementsByClassName('play ' + audio.id)[0]
+      .addEventListener('click', () => playPauseAudio(audio) , false );
+      document.getElementsByClassName('remove ' + audio.id)[0]
+      .addEventListener('click', () => removeAudio(audio) , false );
+
+    // jQuery Form
+
+    // let reg = $('div#content-'+audio.idRegistro+'_'+audio.idPregunta);
+    // if( reg.length <= 0){
+    //   $($(''+audio.selector).parent().get(0)).prepend('<div id="content-'+audio.idRegistro+'_'+audio.idPregunta+'"></div>')
+    // }
+    // $('#content-'+audio.idRegistro+'_'+audio.idPregunta).prepend(template);
+
+    // $('.play.' + audio.id).on('click', () => { playPauseAudio(audio) })
+    // $('.remove.' + audio.id).on('click', () => { removeAudio(audio) })
 
   }
 
   templateAudio( audio ){
-    return `<div class="MediaRecord-media">
+    let date  = (new Date(audio.date).toISOString()).split('T');
+    let time = date[1].split('.')[0];
+    date = `${date[0]} ${time}`;
+    return `<div class="MediaRecord-media ${audio.id} ${audio.idRegistro} ${audio.idPregunta}">
       <div class="MediaRecord-buttons-media">
-        <button data-url="${audio.path}" class="play ${audio.id}">${this.icons.playIcon}</button><input class="range ex1-${audio.id}" type="range" value="0" min="0" max="100"/><button class="remove ${audio.id}" data-url="${audio.path}">${this.icons.deleteIcon}</button>
+        <button data-url="${audio.path}" class="play ${audio.id}">${this.icons.playIcon}</button>
+        <input class="range ex1-${audio.id}" type="range" value="0" min="0" max="100"/>
+        <button class="remove ${audio.id}" >${this.icons.deleteIcon}</button>
       </div>
+      <div class="MediaRecord-date">${date}</div>
     </div>`
+  }
+
+  upload( data ) {
+    let uri = encodeURI( this.arguments.nameServer );
+
+    let options = new FileUploadOptions();
+    options.fileKey = "file";
+    options.fileName = data.name;
+    options.mimeType = "application/octet-stream";
+
+    let headers = { 'name' : data.name };
+
+    options.headers = headers;
+
+    let ft = new FileTransfer();
+    ft.onprogress = function(progressEvent) {
+      if (progressEvent.lengthComputable) {
+        console.log(progressEvent.loaded / progressEvent.total);
+      } else {
+        console.log('----');
+      }
+    };
+    ft.upload(data.path, uri, e => console.log(e), e => console.log(e), options);
   }
 
 }
 
 
-(function( $ ){
-   $.fn.recordMedia = function({ idRegistro, idPregunta, max }) {
-    let selector = this.selector;  
-    let app = new App({ idRegistro, idPregunta, max, selector });
-    // let init = app.init.bind(app);
-    app.init()
-    // document.addEventListener('deviceready', init , false);
-    return { element: this, app: app };
-   }; 
-})( jQuery )
+if( jQuery ){
+  (function( $ ){
+     $.fn.recordMedia = function({ idRegistro, idPregunta, nameServer, max }) {
+      let selector = this.selector;  
+      let app = new App({ idRegistro, idPregunta, max, nameServer, selector });
+      // let init = app.init.bind(app);
+      app.init()
+      // document.addEventListener('deviceready', init , false);
+      return { element: this, app: app };
+     }; 
+  })( jQuery )
+}
 
+
+export default App;
