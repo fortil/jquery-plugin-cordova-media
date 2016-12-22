@@ -1,7 +1,7 @@
 jQuery plugin - media cordova
 ===================
 
-Wonderfull plugin to record and play media using cordova and jQuery. This plugin generate a complete view to use it in a **mobile app**. It's easy to use,  you only have to follow the recommendations.
+Wonderfull plugin to record and play media using cordova and jQuery. This plugin generate a complete view to use it in a **mobile app**. It's easy to use,  you only have to follow the recommendations. This plugin use WebSQL to save the created files.
 Requirements
 -------
 
@@ -11,6 +11,7 @@ Requirements
 
 How to use
 -------
+[View the example](https://github.com/fortil/example-plugin-jquery-cordova-media)
 ### index.html
 - Call  the files you need before the plugin
 
