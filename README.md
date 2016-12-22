@@ -11,6 +11,7 @@ Requirements
 
 How to use
 -------
+[View the example](https://github.com/fortil/example-plugin-jquery-cordova-media)
 ### index.html
 - Call  the files you need before the plugin
 
