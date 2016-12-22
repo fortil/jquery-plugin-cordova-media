@@ -428,7 +428,7 @@
     function _ref18(_ref17) {
         var idRegistro = _ref17.idRegistro, idPregunta = _ref17.idPregunta, nameServer = _ref17.nameServer, max = _ref17.max;
         var selector = this.selector;
-        var app = new App({
+        var app = new RecordMedia({
             idRegistro: idRegistro,
             idPregunta: idPregunta,
             max: max,

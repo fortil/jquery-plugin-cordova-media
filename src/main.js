@@ -366,7 +366,7 @@ if( jQuery ){
   (function( $ ){
      $.fn.recordMedia = function({ idRegistro, idPregunta, nameServer, max }) {
       let selector = this.selector;  
-      let app = new App({ idRegistro, idPregunta, max, nameServer, selector });
+      let app = new RecordMedia({ idRegistro, idPregunta, max, nameServer, selector });
       // let init = app.init.bind(app);
       app.init()
       // document.addEventListener('deviceready', init , false);
